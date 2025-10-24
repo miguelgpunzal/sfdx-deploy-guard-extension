@@ -434,22 +434,57 @@ export class SfdxDeployGuard {
 
             // Import required libraries
             const { ComponentSet } = await import('@salesforce/source-deploy-retrieve');
-            const { Connection, Org } = await import('@salesforce/core');
+            const { Connection, Org, AuthInfo } = await import('@salesforce/core');
             
-            // Get the connection
-            const username = await this.getDefaultUsername();
-            if (!username) {
+            // Get the target org alias/username
+            const targetOrg = await this.getDefaultUsername();
+            if (!targetOrg) {
                 vscode.window.showErrorMessage('No default org found');
                 return;
             }
 
+            // Get org details first to show to user
+            let orgAlias = targetOrg;
+            let orgUsername = '';
+            let orgType = '';
+            
+            try {
+                const orgDisplayCommand = `sf org display --target-org ${targetOrg} --json`;
+                const { stdout: orgStdout } = await execAsync(orgDisplayCommand);
+                const orgInfo = JSON.parse(orgStdout);
+                
+                if (orgInfo.status === 0 && orgInfo.result) {
+                    orgUsername = orgInfo.result.username;
+                    orgAlias = orgInfo.result.alias || targetOrg;
+                    orgType = orgInfo.result.instanceUrl ? 
+                        (orgInfo.result.instanceUrl.includes('sandbox') ? ' (Sandbox)' : ' (Production)') : '';
+                }
+            } catch (error) {
+                console.error('Error getting org details:', error);
+            }
+
+            // Show deployment target info
+            const targetInfo = orgAlias !== orgUsername && orgUsername ?
+                `${orgAlias}${orgType} (${orgUsername})` :
+                `${orgAlias}${orgType}`;
+            
+            console.log(`Deploying to: ${targetInfo}`);
+
             // Show progress notification
             await vscode.window.withProgress({
                 location: vscode.ProgressLocation.Notification,
-                title: 'Deploying to org...',
+                title: `Deploying to ${orgAlias}...`,
                 cancellable: false
             }, async (progress) => {
                 try {
+                    progress.report({ message: 'Connecting to org...' });
+                    
+                    // Create a proper connection using Org.create which handles both aliases and usernames
+                    const org = await Org.create({ aliasOrUsername: targetOrg });
+                    const connection = org.getConnection();
+                    
+                    console.log('DEBUG: Connected to org:', connection.getUsername());
+                    
                     progress.report({ message: 'Preparing deployment...' });
                     
                     // Create ComponentSet from the file path
@@ -458,9 +493,9 @@ export class SfdxDeployGuard {
                     
                     progress.report({ message: 'Deploying components...' });
                     
-                    // Deploy using the library (same as Salesforce extension)
+                    // Deploy using the connection object
                     const deployOperation = await componentSet.deploy({
-                        usernameOrConnection: username
+                        usernameOrConnection: connection as any
                     });
                     
                     progress.report({ message: 'Waiting for deployment to complete...' });
@@ -470,7 +505,7 @@ export class SfdxDeployGuard {
                     
                     // Check result
                     if (deployResult.response.status === 'Succeeded') {
-                        vscode.window.showInformationMessage(`✅ Deployment succeeded!`);
+                        vscode.window.showInformationMessage(`✅ Deployment succeeded to ${orgAlias}!`);
                     } else {
                         const failures = deployResult.response.details?.componentFailures;
                         const errors = Array.isArray(failures) ? failures : (failures ? [failures] : []);
