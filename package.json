@@ -2,7 +2,7 @@
   "name": "sfdx-deploy-guard",
   "displayName": "SFDX Deploy Guard",
   "description": "Prevent accidental overwrites with smart deployment safety checks for Salesforce metadata",
-  "version": "0.0.2",
+  "version": "1.0.0",
   "publisher": "MiguelPunzal",
   "icon": "logo.png",
   "author": {
