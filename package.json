@@ -1,0 +1,93 @@
+{
+  "name": "sfdx-deploy-guard",
+  "displayName": "SFDX Deploy Guard",
+  "description": "Prevent accidental overwrites with smart deployment safety checks for Salesforce metadata",
+  "version": "0.0.1",
+  "publisher": "miguelgpunzal",
+  "author": {
+    "name": "Miguel Punzal",
+    "url": "https://github.com/miguelgpunzal"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/miguelgpunzal/sfdx-deploy-guard-extension"
+  },
+  "bugs": {
+    "url": "https://github.com/miguelgpunzal/sfdx-deploy-guard-extension/issues"
+  },
+  "homepage": "https://github.com/miguelgpunzal/sfdx-deploy-guard-extension#readme",
+  "engines": {
+    "vscode": "^1.80.0"
+  },
+  "categories": [
+    "Other"
+  ],
+  "activationEvents": [
+    "workspaceContains:sfdx-project.json"
+  ],
+  "main": "./out/extension.js",
+  "contributes": {
+    "commands": [
+      {
+        "command": "sfdxDeployGuard.deployWithCheck",
+        "title": "Deploy This Source to Org (with Safety Check)",
+        "category": "SFDX"
+      }
+    ],
+    "menus": {
+      "explorer/context": [
+        {
+          "command": "sfdxDeployGuard.deployWithCheck",
+          "when": "resourceExtname =~ /\\.(cls|trigger|page|component|js|html|css|xml)$/",
+          "group": "2_workspace@1"
+        }
+      ],
+      "editor/context": [
+        {
+          "command": "sfdxDeployGuard.deployWithCheck",
+          "when": "resourceExtname =~ /\\.(cls|trigger|page|component|js|html|css|xml)$/",
+          "group": "2_workspace@1"
+        }
+      ],
+      "commandPalette": [
+        {
+          "command": "sfdxDeployGuard.deployWithCheck"
+        }
+      ]
+    },
+    "configuration": {
+      "title": "SFDX Deploy Guard",
+      "properties": {
+        "sfdxDeployGuard.enabled": {
+          "type": "boolean",
+          "default": true,
+          "description": "Enable/disable the deploy guard check"
+        },
+        "sfdxDeployGuard.checkLastModified": {
+          "type": "boolean",
+          "default": true,
+          "description": "Check last modified user before deploying"
+        }
+      }
+    }
+  },
+  "scripts": {
+    "vscode:prepublish": "npm run compile",
+    "compile": "tsc -p ./",
+    "watch": "tsc -watch -p ./",
+    "pretest": "npm run compile && npm run lint",
+    "lint": "eslint src --ext ts",
+    "test": "node ./out/test/runTest.js"
+  },
+  "devDependencies": {
+    "@types/vscode": "^1.80.0",
+    "@types/node": "^18.x",
+    "@typescript-eslint/eslint-plugin": "^6.0.0",
+    "@typescript-eslint/parser": "^6.0.0",
+    "eslint": "^8.40.0",
+    "typescript": "^5.1.3"
+  },
+  "dependencies": {
+    "@salesforce/core": "^5.2.0"
+  }
+}
