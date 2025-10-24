@@ -22,9 +22,13 @@ export class SfdxDeployGuard {
      * Handle the deploy command with pre-deployment checks
      */
     async handleDeployCommand(uri?: vscode.Uri): Promise<void> {
+        console.log('DEBUG: handleDeployCommand called');
         const shouldProceed = await this.checkBeforeDeploy(uri);
+        console.log('DEBUG: shouldProceed:', shouldProceed);
         if (shouldProceed) {
             await this.executeDeploy(uri);
+        } else {
+            console.log('DEBUG: Deployment cancelled by user or checks');
         }
     }
 
@@ -101,7 +105,7 @@ export class SfdxDeployGuard {
                             return false;
                         } else if (choice === 'Deploy Anyway') {
                             // Proceed with deployment
-                            // Continue to deployment
+                            vscode.window.showInformationMessage('⏳ Proceeding with deployment...');
                         }
                     } else {
                         // Same user (you) made the last change - proceed silently
@@ -395,11 +399,14 @@ export class SfdxDeployGuard {
      */
     async executeDeploy(uri?: vscode.Uri): Promise<void> {
         try {
+            console.log('DEBUG: executeDeploy called');
             const fileUri = uri || vscode.window.activeTextEditor?.document.uri;
             if (!fileUri) {
                 vscode.window.showErrorMessage('No file selected for deployment');
                 return;
             }
+
+            console.log('DEBUG: File URI:', fileUri.fsPath);
 
             // Use SFDX CLI directly to deploy
             const filePath = fileUri.fsPath;
@@ -418,13 +425,16 @@ export class SfdxDeployGuard {
                     // Use metadata type and name for precise deployment
                     const metadataArg = this.getMetadataTypeArg(metadata.type);
                     command = `sf project deploy start --metadata "${metadataArg}:${metadata.apiName}"`;
+                    console.log('DEBUG: Deploy command:', command);
                 } else {
                     // Fallback: use source-path for the specific file
                     command = `sf project deploy start --source-path "${filePath}"`;
+                    console.log('DEBUG: Deploy command (fallback):', command);
                 }
             }
             
             // Execute in terminal so user can see the output
+            console.log('DEBUG: Creating terminal and sending command');
             const terminal = vscode.window.createTerminal('SFDX Deploy');
             terminal.show();
             terminal.sendText(command);
@@ -432,6 +442,7 @@ export class SfdxDeployGuard {
             vscode.window.showInformationMessage('✅ Deployment started. Check terminal for progress.');
             
         } catch (error) {
+            console.error('DEBUG: Error in executeDeploy:', error);
             vscode.window.showErrorMessage(`Failed to execute deploy command: ${error}`);
         }
     }
