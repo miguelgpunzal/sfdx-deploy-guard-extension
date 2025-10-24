@@ -68,6 +68,16 @@
           "type": "boolean",
           "default": true,
           "description": "Check last modified user before deploying"
+        },
+        "sfdxDeployGuard.enableRealTimeMonitoring": {
+          "type": "boolean",
+          "default": true,
+          "description": "Enable real-time monitoring to show who last modified the file while you're editing"
+        },
+        "sfdxDeployGuard.ignoreUserIds": {
+          "type": "string",
+          "default": "",
+          "description": "Comma-separated list of Salesforce User IDs to ignore (e.g., '0052w00000DINOKAA5,0052w00000ABCDEF'). Files modified by these users won't trigger warnings."
         }
       }
     }

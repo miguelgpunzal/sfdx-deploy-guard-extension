@@ -2,6 +2,7 @@ import * as vscode from 'vscode';
 import * as path from 'path';
 import { exec } from 'child_process';
 import { promisify } from 'util';
+import { FileMonitor } from './fileMonitor';
 
 const execAsync = promisify(exec);
 
@@ -85,8 +86,12 @@ export class SfdxDeployGuard {
                     // Get current user info
                     const currentUserId = await this.getCurrentUserId(username);
                     
-                    // Check if last modifier is different from current user (compare by ID)
-                    if (lastModifiedInfo.id && currentUserId && lastModifiedInfo.id !== currentUserId) {
+                    // Get ignored user IDs from config
+                    const ignoredUserIds = this.getIgnoredUserIds();
+                    const isIgnoredUser = lastModifiedInfo.id && ignoredUserIds.includes(lastModifiedInfo.id);
+                    
+                    // Check if last modifier is different from current user and not in ignored list
+                    if (lastModifiedInfo.id && currentUserId && lastModifiedInfo.id !== currentUserId && !isIgnoredUser) {
                         // Different user modified the file - show warning
                         const choice = await vscode.window.showWarningMessage(
                             `⚠️ Warning: This file was recently changed by ${lastModifiedInfo.name} on ${lastModifiedInfo.date}.\n\nWhat would you like to do?`,
@@ -108,8 +113,12 @@ export class SfdxDeployGuard {
                             vscode.window.showInformationMessage('⏳ Proceeding with deployment...');
                         }
                     } else {
-                        // Same user (you) made the last change - proceed silently
-                        vscode.window.showInformationMessage(`✅ You were the last to modify this file. Proceeding with deployment...`);
+                        // Same user (you) made the last change, or user is in ignored list - proceed silently
+                        if (isIgnoredUser) {
+                            vscode.window.showInformationMessage(`✅ File modified by ${lastModifiedInfo.name} (ignored user). Proceeding with deployment...`);
+                        } else {
+                            vscode.window.showInformationMessage(`✅ You were the last to modify this file. Proceeding with deployment...`);
+                        }
                     }
 
                     // Proceed with deployment
@@ -360,6 +369,21 @@ export class SfdxDeployGuard {
     }
 
     /**
+     * Get list of ignored user IDs from configuration
+     */
+    private getIgnoredUserIds(): string[] {
+        const config = vscode.workspace.getConfiguration('sfdxDeployGuard');
+        const ignoreUserIds = config.get<string>('ignoreUserIds', '');
+        
+        if (!ignoreUserIds) {
+            return [];
+        }
+        
+        // Split by comma and trim whitespace
+        return ignoreUserIds.split(',').map(id => id.trim()).filter(id => id.length > 0);
+    }
+
+    /**
      * Get current user ID from the org
      */
     private async getCurrentUserId(username: string): Promise<string> {
@@ -440,6 +464,15 @@ export class SfdxDeployGuard {
             terminal.sendText(command);
             
             vscode.window.showInformationMessage('✅ Deployment started. Check terminal for progress.');
+            
+            // Refresh the file monitor status after deployment starts
+            const fileMonitor = FileMonitor.getInstance();
+            if (fileMonitor) {
+                // Wait a bit for the deployment to process, then refresh
+                setTimeout(async () => {
+                    await fileMonitor.refreshCurrentFile();
+                }, 3000); // Wait 3 seconds for deployment to complete
+            }
             
         } catch (error) {
             console.error('DEBUG: Error in executeDeploy:', error);

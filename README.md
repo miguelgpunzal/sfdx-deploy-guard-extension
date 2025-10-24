@@ -65,8 +65,9 @@ Working in a team environment? Tired of accidentally overwriting a teammate's ch
 ### 🔍 Smart Detection
 - Real-time query of org metadata
 - Identifies last modifier and timestamp
-- Works with multiple metadata types
+- Works with 15+ metadata types
 - Integrates seamlessly with SFDX workflow
+- User ID comparison for accurate detection
 
 </td>
 <td width="50%">
@@ -74,6 +75,7 @@ Working in a team environment? Tired of accidentally overwriting a teammate's ch
 ### 🚨 Intelligent Warnings
 - Clear, actionable warning dialogs
 - Shows who modified and when
+- Compare changes side-by-side
 - Proceed or cancel options
 - Prevents accidental overwrites
 
@@ -82,11 +84,34 @@ Working in a team environment? Tired of accidentally overwriting a teammate's ch
 <tr>
 <td width="50%">
 
-### ⚙️ Configurable
+### 📊 Real-Time Monitoring
+- **NEW!** Live status bar indicator
+- Shows last modifier while editing
+- Auto-polls every 10 seconds when typing
+- Blinking alert for conflicts
+- Stops polling when inactive
+
+</td>
+<td width="50%">
+
+### ⚙️ Highly Configurable
 - Enable/disable safety checks
+- Ignore specific user IDs
+- Configure real-time monitoring
 - Customize warning behavior
-- Works alongside existing commands
 - Non-intrusive integration
+
+</td>
+</tr>
+<tr>
+<td width="50%">
+
+### 🎯 Precise Deployment
+- Deploys specific files only
+- No accidental directory deployments
+- Metadata type auto-detection
+- Terminal output visibility
+- Integration with SFDX CLI
 
 </td>
 <td width="50%">
@@ -95,6 +120,7 @@ Working in a team environment? Tired of accidentally overwriting a teammate's ch
 - Context menu integration
 - Command palette support
 - Keyboard shortcuts compatible
+- Visual conflict indicators
 - Minimal setup required
 
 </td>
@@ -223,6 +249,17 @@ Do you want to overwrite the changes?
 | Apex Components | `.component` | ✅ Fully Supported |
 | Lightning Web Components | `.js`, `.html`, `.css` | ✅ Fully Supported |
 | Aura Components | `.cmp`, `.app`, `.js`, `.css` | ✅ Fully Supported |
+| Custom Objects | `.object-meta.xml` | ✅ Fully Supported |
+| Flows | `.flow-meta.xml` | ✅ Fully Supported |
+| Profiles | `.profile-meta.xml` | ✅ Fully Supported |
+| Permission Sets | `.permissionset-meta.xml` | ✅ Fully Supported |
+| Layouts | `.layout-meta.xml` | ✅ Fully Supported |
+| Static Resources | various | ✅ Fully Supported |
+| Custom Labels | `.labels-meta.xml` | ✅ Fully Supported |
+| Quick Actions | `.quickAction-meta.xml` | ✅ Fully Supported |
+| Custom Tabs | `.tab-meta.xml` | ✅ Fully Supported |
+| Flexi Pages | `.flexipage-meta.xml` | ✅ Fully Supported |
+| Email Templates | `.email-meta.xml` | ✅ Fully Supported |
 
 ---
 
@@ -236,7 +273,13 @@ Configure the extension through VS Code settings (`Ctrl+,` or `Cmd+,`):
   "sfdxDeployGuard.enabled": true,
   
   // Check last modified user before deploying
-  "sfdxDeployGuard.checkLastModified": true
+  "sfdxDeployGuard.checkLastModified": true,
+  
+  // Enable real-time monitoring (status bar and polling)
+  "sfdxDeployGuard.enableRealTimeMonitoring": true,
+  
+  // Comma-separated list of User IDs to ignore
+  "sfdxDeployGuard.ignoreUserIds": "0052w00000DINOKAA5,0052w00000ABCDEF"
 }
 ```
 
@@ -246,6 +289,46 @@ Configure the extension through VS Code settings (`Ctrl+,` or `Cmd+,`):
 |---------|------|---------|-------------|
 | `sfdxDeployGuard.enabled` | boolean | `true` | Enable/disable the deploy guard check |
 | `sfdxDeployGuard.checkLastModified` | boolean | `true` | Check last modified user before deploying |
+| `sfdxDeployGuard.enableRealTimeMonitoring` | boolean | `true` | Enable real-time monitoring with status bar and automatic polling |
+| `sfdxDeployGuard.ignoreUserIds` | string | `""` | Comma-separated Salesforce User IDs to ignore (won't trigger warnings) |
+
+---
+
+## 🎯 Real-Time Monitoring
+
+**NEW in v1.5.0!** The extension now includes a powerful real-time monitoring feature that keeps you informed about file modifications while you work.
+
+### Status Bar Indicator
+
+The extension adds a status bar item (bottom right) that shows:
+
+- **`LastModifiedBy: You (date)`** - 🟢 You're the last modifier (safe to deploy)
+- **`LastModifiedBy: John Doe (date)`** - 🔴🟡 Someone else modified it (blinking yellow/red alert!)
+
+### Smart Polling Behavior
+
+The monitoring is intelligent and resource-efficient:
+
+1. **On File Open**: Checks immediately who last modified the file
+2. **While Typing**: Polls every 10 seconds to detect changes
+3. **After Stop Typing**: Continues polling 2 more times (20 seconds grace period)
+4. **Then Pauses**: Automatically stops to save resources
+5. **Resume on Edit**: Starts polling again when you start typing
+
+### Visual Indicators
+
+When someone else has modified the file:
+- 🔴🟡 **Blinking Status Bar**: Alternates between yellow and red every second
+- 🎨 **Editor Decorations**: Orange background highlight on first line
+- 🚨 **Warning Icon**: Gutter icon indicator
+- 💡 **Click for Details**: Click status bar item for full information
+
+### After Deployment
+
+When you deploy a file:
+- Status bar automatically refreshes after 3 seconds
+- Updates to show you as the last modifier
+- Stops blinking and shows green/normal state
 
 ---
 
@@ -352,6 +435,61 @@ npm run lint
 
 ## 📝 Release Notes
 
+### Version 1.5.0 - Real-Time Monitoring & Enhanced Features
+
+**🆕 New Features:**
+- 📊 **Real-Time Monitoring**: Live status bar showing who last modified the file
+- 🔄 **Smart Polling**: Auto-polls every 10 seconds while editing, pauses when inactive
+- 🚨 **Blinking Alerts**: Status bar blinks yellow/red when someone else modified the file
+- 🎨 **Visual Indicators**: Editor decorations and gutter icons for conflicts
+- ⚙️ **Ignore Users**: Configure User IDs to ignore (no warnings for trusted users/bots)
+- 🎯 **Auto-Refresh**: Status bar updates automatically after deployment
+- 💡 **Click for Info**: Click status bar to see detailed modification information
+
+**🐛 Bug Fixes:**
+- Fixed User ID comparison (was comparing Org ID instead of User ID)
+- Fixed deployment to target specific files only (not entire directory)
+- Added feedback message when clicking "Deploy Anyway"
+- Improved error handling and edge cases
+
+**✨ Improvements:**
+- Extended support to 15+ metadata types (Flows, Profiles, Layouts, etc.)
+- Better side-by-side comparison for LWC and Aura components
+- More efficient polling with grace period after typing stops
+- Cleaner status bar messages with date/time always visible
+
+### Version 1.4.0 - Deployment Improvements
+
+**Features:**
+- Added feedback message when clicking "Deploy Anyway"
+- Improved deployment flow and error handling
+
+### Version 1.3.0 - User ID Fix
+
+**Bug Fixes:**
+- Fixed User ID comparison to query actual User ID instead of Org ID
+- Now correctly identifies when you are the last modifier
+
+### Version 1.2.0 - Universal Metadata Support
+
+**Features:**
+- Added support for all metadata types via `sf org list metadata`
+- Support for CustomObject, Flow, Profile, PermissionSet, and more
+- Fallback mechanism for metadata types not in Tooling API
+
+### Version 1.1.0 - Precise Deployment
+
+**Features:**
+- Fixed deployment to target specific files using `--metadata` flag
+- No more accidental directory deployments
+
+### Version 1.0.0 - LWC & Aura Support
+
+**Features:**
+- Full support for Lightning Web Components
+- Full support for Aura Components
+- Tooling API integration for bundle-based components
+
 ### Version 0.0.1 - Initial Release
 
 **Features:**
@@ -364,10 +502,10 @@ npm run lint
 - 🔍 Side-by-side comparison view for all supported metadata types
 
 **Coming Soon:**
--  Deployment history tracking
+- 📈 Deployment history tracking
 - 🔔 Customizable notification preferences
 - 🌐 Multi-org support
-- 📝 Custom metadata type support
+- 📝 Additional metadata type support
 
 ---
 
