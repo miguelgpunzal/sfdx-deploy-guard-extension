@@ -13,6 +13,7 @@ interface MetadataInfo {
 
 interface LastModifiedInfo {
     name: string;
+    id: string;
     date: string;
 }
 
@@ -78,10 +79,10 @@ export class SfdxDeployGuard {
                     }
 
                     // Get current user info
-                    const currentUser = await this.getCurrentUser(username);
+                    const currentUserId = await this.getCurrentUserId(username);
                     
-                    // Check if last modifier is different from current user
-                    if (lastModifiedInfo.name !== currentUser) {
+                    // Check if last modifier is different from current user (compare by ID)
+                    if (lastModifiedInfo.id !== currentUserId) {
                         const choice = await vscode.window.showWarningMessage(
                             `⚠️ Warning: This file was recently changed by ${lastModifiedInfo.name} on ${lastModifiedInfo.date}.\n\nWhat would you like to do?`,
                             { modal: true },
@@ -187,23 +188,27 @@ export class SfdxDeployGuard {
         try {
             let query = '';
             
-            // Build SOQL query based on metadata type
+            // Build SOQL query based on metadata type - include both Name and Id
             switch (metadata.type) {
                 case 'ApexClass':
-                    query = `SELECT LastModifiedBy.Name, LastModifiedDate FROM ApexClass WHERE Name='${metadata.apiName}'`;
+                    query = `SELECT LastModifiedBy.Name, LastModifiedById, LastModifiedDate FROM ApexClass WHERE Name='${metadata.apiName}'`;
                     break;
                 case 'ApexTrigger':
-                    query = `SELECT LastModifiedBy.Name, LastModifiedDate FROM ApexTrigger WHERE Name='${metadata.apiName}'`;
+                    query = `SELECT LastModifiedBy.Name, LastModifiedById, LastModifiedDate FROM ApexTrigger WHERE Name='${metadata.apiName}'`;
                     break;
                 case 'ApexPage':
-                    query = `SELECT LastModifiedBy.Name, LastModifiedDate FROM ApexPage WHERE Name='${metadata.apiName}'`;
+                    query = `SELECT LastModifiedBy.Name, LastModifiedById, LastModifiedDate FROM ApexPage WHERE Name='${metadata.apiName}'`;
                     break;
                 case 'ApexComponent':
-                    query = `SELECT LastModifiedBy.Name, LastModifiedDate FROM ApexComponent WHERE Name='${metadata.apiName}'`;
+                    query = `SELECT LastModifiedBy.Name, LastModifiedById, LastModifiedDate FROM ApexComponent WHERE Name='${metadata.apiName}'`;
                     break;
+                case 'LightningComponentBundle':
+                    // Query LWC bundle using Tooling API
+                    return await this.getLWCLastModifiedInfo(metadata.apiName, username);
+                case 'AuraDefinitionBundle':
+                    // Query Aura bundle using Tooling API
+                    return await this.getAuraLastModifiedInfo(metadata.apiName, username);
                 default:
-                    // For LWC, Aura, and other types, we can't directly query
-                    // We'll use Tooling API for these
                     return null;
             }
 
@@ -215,6 +220,7 @@ export class SfdxDeployGuard {
                 const record = result.result.records[0];
                 return {
                     name: record.LastModifiedBy?.Name || 'Unknown',
+                    id: record.LastModifiedById || '',
                     date: new Date(record.LastModifiedDate).toLocaleString()
                 };
             }
@@ -222,6 +228,58 @@ export class SfdxDeployGuard {
             return null;
         } catch (error) {
             console.error('Error querying last modified info:', error);
+            return null;
+        }
+    }
+
+    /**
+     * Get last modified info for LWC using Tooling API
+     */
+    private async getLWCLastModifiedInfo(bundleName: string, username: string): Promise<LastModifiedInfo | null> {
+        try {
+            const query = `SELECT LastModifiedBy.Name, LastModifiedById, LastModifiedDate FROM LightningComponentBundle WHERE DeveloperName='${bundleName}'`;
+            const command = `sf data query --query "${query}" --target-org ${username} --use-tooling-api --json`;
+            const { stdout } = await execAsync(command);
+            const result = JSON.parse(stdout);
+
+            if (result.status === 0 && result.result.records && result.result.records.length > 0) {
+                const record = result.result.records[0];
+                return {
+                    name: record.LastModifiedBy?.Name || 'Unknown',
+                    id: record.LastModifiedById || '',
+                    date: new Date(record.LastModifiedDate).toLocaleString()
+                };
+            }
+
+            return null;
+        } catch (error) {
+            console.error('Error querying LWC info:', error);
+            return null;
+        }
+    }
+
+    /**
+     * Get last modified info for Aura using Tooling API
+     */
+    private async getAuraLastModifiedInfo(bundleName: string, username: string): Promise<LastModifiedInfo | null> {
+        try {
+            const query = `SELECT LastModifiedBy.Name, LastModifiedById, LastModifiedDate FROM AuraDefinitionBundle WHERE DeveloperName='${bundleName}'`;
+            const command = `sf data query --query "${query}" --target-org ${username} --use-tooling-api --json`;
+            const { stdout } = await execAsync(command);
+            const result = JSON.parse(stdout);
+
+            if (result.status === 0 && result.result.records && result.result.records.length > 0) {
+                const record = result.result.records[0];
+                return {
+                    name: record.LastModifiedBy?.Name || 'Unknown',
+                    id: record.LastModifiedById || '',
+                    date: new Date(record.LastModifiedDate).toLocaleString()
+                };
+            }
+
+            return null;
+        } catch (error) {
+            console.error('Error querying Aura info:', error);
             return null;
         }
     }
@@ -247,32 +305,23 @@ export class SfdxDeployGuard {
     }
 
     /**
-     * Get current user name from the org
+     * Get current user ID from the org
      */
-    private async getCurrentUser(username: string): Promise<string> {
+    private async getCurrentUserId(username: string): Promise<string> {
         try {
-            const query = "SELECT Name FROM User WHERE Id = UserInfo.getUserId()";
-            const command = `sf data query --query "${query}" --target-org ${username} --json`;
-            const { stdout } = await execAsync(command);
-            const result = JSON.parse(stdout);
-
-            if (result.status === 0 && result.result.records && result.result.records.length > 0) {
-                return result.result.records[0].Name;
-            }
-
-            // Fallback: get username from org info
+            // Get the current user's ID directly from org info
             const orgCommand = `sf org display --target-org ${username} --json`;
             const { stdout: orgStdout } = await execAsync(orgCommand);
             const orgResult = JSON.parse(orgStdout);
             
-            if (orgResult.status === 0 && orgResult.result) {
-                return orgResult.result.username;
+            if (orgResult.status === 0 && orgResult.result && orgResult.result.id) {
+                return orgResult.result.id;
             }
 
-            return username;
+            return '';
         } catch (error) {
-            console.error('Error getting current user:', error);
-            return username;
+            console.error('Error getting current user ID:', error);
+            return '';
         }
     }
 
@@ -381,6 +430,12 @@ export class SfdxDeployGuard {
                 case 'ApexComponent':
                     query = `SELECT Markup FROM ApexComponent WHERE Name='${metadata.apiName}'`;
                     break;
+                case 'LightningComponentBundle':
+                    // For LWC, get the specific resource content
+                    return await this.getLWCContent(metadata, username);
+                case 'AuraDefinitionBundle':
+                    // For Aura, get the specific definition content
+                    return await this.getAuraContent(metadata, username);
                 default:
                     return null;
             }
@@ -397,6 +452,86 @@ export class SfdxDeployGuard {
             return null;
         } catch (error) {
             console.error('Error querying org content:', error);
+            return null;
+        }
+    }
+
+    /**
+     * Get LWC content from org
+     */
+    private async getLWCContent(metadata: MetadataInfo, username: string): Promise<string | null> {
+        try {
+            // Determine the file type from the path
+            const fileName = path.basename(metadata.filePath);
+            const ext = path.extname(fileName);
+            
+            let fileType = '';
+            if (ext === '.js') {
+                fileType = 'LightningComponentResource';
+            } else if (ext === '.html') {
+                fileType = 'LightningComponentResource';
+            } else if (ext === '.css') {
+                fileType = 'LightningComponentResource';
+            }
+
+            // Query for the specific resource
+            const query = `SELECT Id, Source FROM LightningComponentResource WHERE LightningComponentBundle.DeveloperName='${metadata.apiName}' AND FilePath LIKE '%${fileName}'`;
+            const command = `sf data query --query "${query}" --target-org ${username} --use-tooling-api --json`;
+            const { stdout } = await execAsync(command);
+            const result = JSON.parse(stdout);
+
+            if (result.status === 0 && result.result.records && result.result.records.length > 0) {
+                return result.result.records[0].Source || '';
+            }
+
+            return null;
+        } catch (error) {
+            console.error('Error querying LWC content:', error);
+            return null;
+        }
+    }
+
+    /**
+     * Get Aura content from org
+     */
+    private async getAuraContent(metadata: MetadataInfo, username: string): Promise<string | null> {
+        try {
+            // Determine the definition type from the file extension
+            const fileName = path.basename(metadata.filePath);
+            const ext = path.extname(fileName);
+            
+            let defType = '';
+            if (ext === '.cmp') {
+                defType = 'COMPONENT';
+            } else if (ext === '.app') {
+                defType = 'APPLICATION';
+            } else if (fileName.endsWith('Controller.js')) {
+                defType = 'CONTROLLER';
+            } else if (fileName.endsWith('Helper.js')) {
+                defType = 'HELPER';
+            } else if (fileName.endsWith('Renderer.js')) {
+                defType = 'RENDERER';
+            } else if (ext === '.css') {
+                defType = 'STYLE';
+            }
+
+            if (!defType) {
+                return null;
+            }
+
+            // Query for the specific definition
+            const query = `SELECT Source FROM AuraDefinition WHERE AuraDefinitionBundle.DeveloperName='${metadata.apiName}' AND DefType='${defType}'`;
+            const command = `sf data query --query "${query}" --target-org ${username} --use-tooling-api --json`;
+            const { stdout } = await execAsync(command);
+            const result = JSON.parse(stdout);
+
+            if (result.status === 0 && result.result.records && result.result.records.length > 0) {
+                return result.result.records[0].Source || '';
+            }
+
+            return null;
+        } catch (error) {
+            console.error('Error querying Aura content:', error);
             return null;
         }
     }

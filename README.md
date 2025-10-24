@@ -13,9 +13,14 @@ This VS Code extension adds a safety check before deploying Salesforce metadata 
 ## How It Works
 
 1. Right-click on a Salesforce file and select **"SFDX: Deploy This Source to Org (with Safety Check)"**
-2. The extension queries the target org for the `LastModifiedBy.Name` field
-3. If the last modifier is different from the current user:
-   - A warning dialog appears: "<div align="center">
+2. The extension queries the target org for the `LastModifiedById` and `LastModifiedBy.Name` fields
+3. If the last modifier's ID is different from the current user's ID:
+   - A warning dialog appears showing the modifier's name and timestamp
+   - Select "Deploy Anyway" to proceed with deployment
+   - Select "Compare First" to see differences, then cancel
+4. If no conflicts detected, deployment proceeds automatically
+
+<div align="center">
 
 <img src="logo.png" alt="SFDX Deploy Guard Logo" width="128" height="128">
 
@@ -216,8 +221,8 @@ Do you want to overwrite the changes?
 | Apex Triggers | `.trigger` | ✅ Fully Supported |
 | Apex Pages | `.page` | ✅ Fully Supported |
 | Apex Components | `.component` | ✅ Fully Supported |
-| Lightning Web Components | `.js`, `.html`, `.css` | 🔄 Limited Support |
-| Aura Components | `.cmp` | 🔄 Limited Support |
+| Lightning Web Components | `.js`, `.html`, `.css` | ✅ Fully Supported |
+| Aura Components | `.cmp`, `.app`, `.js`, `.css` | ✅ Fully Supported |
 
 ---
 
@@ -250,7 +255,7 @@ Configure the extension through VS Code settings (`Ctrl+,` or `Cmd+,`):
 graph LR
     A[Select File] --> B[Deploy with Safety Check]
     B --> C{Query Org}
-    C --> D{Different User?}
+    C --> D{Different User ID?}
     D -->|Yes| E[Show Warning]
     D -->|No| F[Deploy Automatically]
     E --> G{User Choice}
@@ -259,9 +264,9 @@ graph LR
 ```
 
 1. **File Selection**: Choose a Salesforce metadata file
-2. **Safety Check**: Extension queries the org for `LastModifiedBy` information
-3. **Conflict Detection**: Compares last modifier with current user
-4. **Warning Display**: If different, shows warning with details
+2. **Safety Check**: Extension queries the org for `LastModifiedById` and `LastModifiedBy.Name` information
+3. **Conflict Detection**: Compares last modifier's user ID with current user's ID
+4. **Warning Display**: If different, shows warning with the modifier's name and timestamp
 5. **User Decision**: Proceed or cancel deployment
 6. **Deployment**: Executes standard SFDX deploy command
 
@@ -354,22 +359,24 @@ npm run lint
 - 🚨 Warning dialog with last modified user and timestamp
 - ⚙️ Configurable settings for enabling/disabling checks
 - 🎯 Context menu and command palette integration
-- 📋 Support for multiple metadata types
+- 📋 Support for multiple metadata types including LWC and Aura
+- 🔒 Compares users by ID for accurate conflict detection
+- 🔍 Side-by-side comparison view for all supported metadata types
 
 **Coming Soon:**
-- 🔄 Enhanced LWC and Aura component support
-- 📊 Deployment history tracking
+-  Deployment history tracking
 - 🔔 Customizable notification preferences
 - 🌐 Multi-org support
+- 📝 Custom metadata type support
 
 ---
 
 ## ⚠️ Known Limitations
 
-- **LWC/Aura Components**: Cannot be directly queried via standard Salesforce objects (workaround in progress)
 - **CLI Requirement**: Requires Salesforce CLI to be installed and configured
 - **Single Org**: Currently only checks the default org
 - **Network Dependent**: Requires active connection to Salesforce org
+- **Tooling API**: LWC and Aura components require Tooling API access
 
 ---
 
