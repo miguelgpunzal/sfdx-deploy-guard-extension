@@ -344,11 +344,19 @@ export class SfdxDeployGuard {
             let command: string;
             
             if (stats.type === vscode.FileType.Directory) {
+                // Deploy entire directory
                 command = `sf project deploy start --source-dir "${filePath}"`;
             } else {
-                // For files, deploy the parent directory or specific file
-                const dirPath = path.dirname(filePath);
-                command = `sf project deploy start --source-dir "${dirPath}"`;
+                // Deploy only the specific file using --metadata flag
+                const metadata = await this.getMetadataInfo(fileUri);
+                if (metadata) {
+                    // Use metadata type and name for precise deployment
+                    const metadataArg = this.getMetadataTypeArg(metadata.type);
+                    command = `sf project deploy start --metadata "${metadataArg}:${metadata.apiName}"`;
+                } else {
+                    // Fallback: use source-path for the specific file
+                    command = `sf project deploy start --source-path "${filePath}"`;
+                }
             }
             
             // Execute in terminal so user can see the output
@@ -360,6 +368,28 @@ export class SfdxDeployGuard {
             
         } catch (error) {
             vscode.window.showErrorMessage(`Failed to execute deploy command: ${error}`);
+        }
+    }
+
+    /**
+     * Get the metadata type argument for SF CLI
+     */
+    private getMetadataTypeArg(metadataType: string): string {
+        switch (metadataType) {
+            case 'ApexClass':
+                return 'ApexClass';
+            case 'ApexTrigger':
+                return 'ApexTrigger';
+            case 'ApexPage':
+                return 'ApexPage';
+            case 'ApexComponent':
+                return 'ApexComponent';
+            case 'LightningComponentBundle':
+                return 'LightningComponentBundle';
+            case 'AuraDefinitionBundle':
+                return 'AuraDefinitionBundle';
+            default:
+                return metadataType;
         }
     }
 
