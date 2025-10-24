@@ -419,7 +419,7 @@ export class SfdxDeployGuard {
     }
 
     /**
-     * Execute the deployment
+     * Execute the deployment using library-based approach (same as Salesforce extension)
      */
     async executeDeploy(uri?: vscode.Uri): Promise<void> {
         try {
@@ -432,73 +432,71 @@ export class SfdxDeployGuard {
 
             console.log('DEBUG: File URI:', fileUri.fsPath);
 
-            // Use SFDX CLI directly to deploy
-            const filePath = fileUri.fsPath;
+            // Import required libraries
+            const { ComponentSet } = await import('@salesforce/source-deploy-retrieve');
+            const { Connection, Org } = await import('@salesforce/core');
             
-            // Determine if it's a file or directory
-            const stats = await vscode.workspace.fs.stat(fileUri);
-            let command: string;
-            
-            if (stats.type === vscode.FileType.Directory) {
-                // Deploy entire directory
-                command = `sf project deploy start --source-dir "${filePath}"`;
-            } else {
-                // Deploy only the specific file using --metadata flag
-                const metadata = await this.getMetadataInfo(fileUri);
-                if (metadata) {
-                    // Use metadata type and name for precise deployment
-                    const metadataArg = this.getMetadataTypeArg(metadata.type);
-                    command = `sf project deploy start --metadata "${metadataArg}:${metadata.apiName}"`;
-                    console.log('DEBUG: Deploy command:', command);
-                } else {
-                    // Fallback: use source-path for the specific file
-                    command = `sf project deploy start --source-path "${filePath}"`;
-                    console.log('DEBUG: Deploy command (fallback):', command);
+            // Get the connection
+            const username = await this.getDefaultUsername();
+            if (!username) {
+                vscode.window.showErrorMessage('No default org found');
+                return;
+            }
+
+            // Show progress notification
+            await vscode.window.withProgress({
+                location: vscode.ProgressLocation.Notification,
+                title: 'Deploying to org...',
+                cancellable: false
+            }, async (progress) => {
+                try {
+                    progress.report({ message: 'Preparing deployment...' });
+                    
+                    // Create ComponentSet from the file path
+                    const filePath = fileUri.fsPath;
+                    const componentSet = ComponentSet.fromSource(filePath);
+                    
+                    progress.report({ message: 'Deploying components...' });
+                    
+                    // Deploy using the library (same as Salesforce extension)
+                    const deployOperation = await componentSet.deploy({
+                        usernameOrConnection: username
+                    });
+                    
+                    progress.report({ message: 'Waiting for deployment to complete...' });
+                    
+                    // Poll for status
+                    const deployResult = await deployOperation.pollStatus();
+                    
+                    // Check result
+                    if (deployResult.response.status === 'Succeeded') {
+                        vscode.window.showInformationMessage(`✅ Deployment succeeded!`);
+                    } else {
+                        const failures = deployResult.response.details?.componentFailures;
+                        const errors = Array.isArray(failures) ? failures : (failures ? [failures] : []);
+                        const errorMsg = errors.length > 0 
+                            ? errors.map((e: any) => `${e.fullName}: ${e.problem}`).join('\n')
+                            : 'Unknown error';
+                        vscode.window.showErrorMessage(`❌ Deployment failed:\n${errorMsg}`);
+                    }
+                    
+                    // Refresh the file monitor status after deployment
+                    const fileMonitor = FileMonitor.getInstance();
+                    if (fileMonitor) {
+                        setTimeout(async () => {
+                            await fileMonitor.refreshCurrentFile();
+                        }, 2000);
+                    }
+                    
+                } catch (error) {
+                    console.error('Deployment error:', error);
+                    vscode.window.showErrorMessage(`Failed to deploy: ${error}`);
                 }
-            }
-            
-            // Execute in terminal so user can see the output
-            console.log('DEBUG: Creating terminal and sending command');
-            const terminal = vscode.window.createTerminal('SFDX Deploy');
-            terminal.show();
-            terminal.sendText(command);
-            
-            vscode.window.showInformationMessage('✅ Deployment started. Check terminal for progress.');
-            
-            // Refresh the file monitor status after deployment starts
-            const fileMonitor = FileMonitor.getInstance();
-            if (fileMonitor) {
-                // Wait a bit for the deployment to process, then refresh
-                setTimeout(async () => {
-                    await fileMonitor.refreshCurrentFile();
-                }, 3000); // Wait 3 seconds for deployment to complete
-            }
+            });
             
         } catch (error) {
             console.error('DEBUG: Error in executeDeploy:', error);
-            vscode.window.showErrorMessage(`Failed to execute deploy command: ${error}`);
-        }
-    }
-
-    /**
-     * Get the metadata type argument for SF CLI
-     */
-    private getMetadataTypeArg(metadataType: string): string {
-        switch (metadataType) {
-            case 'ApexClass':
-                return 'ApexClass';
-            case 'ApexTrigger':
-                return 'ApexTrigger';
-            case 'ApexPage':
-                return 'ApexPage';
-            case 'ApexComponent':
-                return 'ApexComponent';
-            case 'LightningComponentBundle':
-                return 'LightningComponentBundle';
-            case 'AuraDefinitionBundle':
-                return 'AuraDefinitionBundle';
-            default:
-                return metadataType;
+            vscode.window.showErrorMessage(`Failed to execute deploy: ${error}`);
         }
     }
 
