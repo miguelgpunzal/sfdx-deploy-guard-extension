@@ -132,6 +132,7 @@ export class SfdxDeployGuard {
         let metadataType = '';
         let apiName = '';
 
+        // Common metadata types with standard paths
         if (filePath.includes('/classes/') || filePath.includes('\\classes\\')) {
             metadataType = 'ApexClass';
             apiName = fileName.replace('.cls', '').replace('.cls-meta.xml', '');
@@ -168,6 +169,42 @@ export class SfdxDeployGuard {
             if (parts.length > 1) {
                 apiName = parts[1].split('\\')[0];
             }
+        } else if (filePath.includes('/objects/') || filePath.includes('\\objects\\')) {
+            metadataType = 'CustomObject';
+            apiName = fileName.replace('.object-meta.xml', '');
+        } else if (filePath.includes('/flows/') || filePath.includes('\\flows\\')) {
+            metadataType = 'Flow';
+            apiName = fileName.replace('.flow-meta.xml', '');
+        } else if (filePath.includes('/profiles/') || filePath.includes('\\profiles\\')) {
+            metadataType = 'Profile';
+            apiName = fileName.replace('.profile-meta.xml', '');
+        } else if (filePath.includes('/permissionsets/') || filePath.includes('\\permissionsets\\')) {
+            metadataType = 'PermissionSet';
+            apiName = fileName.replace('.permissionset-meta.xml', '');
+        } else if (filePath.includes('/staticresources/') || filePath.includes('\\staticresources\\')) {
+            metadataType = 'StaticResource';
+            apiName = fileName.split('.')[0];
+        } else if (filePath.includes('/labels/') || filePath.includes('\\labels\\')) {
+            metadataType = 'CustomLabels';
+            apiName = 'CustomLabels';
+        } else if (filePath.includes('/layouts/') || filePath.includes('\\layouts\\')) {
+            metadataType = 'Layout';
+            apiName = fileName.replace('.layout-meta.xml', '');
+        } else if (filePath.includes('/quickActions/') || filePath.includes('\\quickActions\\')) {
+            metadataType = 'QuickAction';
+            apiName = fileName.replace('.quickAction-meta.xml', '');
+        } else if (filePath.includes('/tabs/') || filePath.includes('\\tabs\\')) {
+            metadataType = 'CustomTab';
+            apiName = fileName.replace('.tab-meta.xml', '');
+        } else if (filePath.includes('/flexipages/') || filePath.includes('\\flexipages\\')) {
+            metadataType = 'FlexiPage';
+            apiName = fileName.replace('.flexipage-meta.xml', '');
+        } else if (filePath.includes('/email/') || filePath.includes('\\email\\')) {
+            metadataType = 'EmailTemplate';
+            const parts = filePath.split(/\/email\/|\\email\\/);
+            if (parts.length > 1) {
+                apiName = parts[1].replace('.email-meta.xml', '').replace('.email', '');
+            }
         }
 
         if (!metadataType || !apiName) {
@@ -186,9 +223,29 @@ export class SfdxDeployGuard {
      */
     private async getLastModifiedInfo(metadata: MetadataInfo, username: string): Promise<LastModifiedInfo | null> {
         try {
+            // Try using Tooling API for standard queryable types first
+            const toolingResult = await this.getLastModifiedViaTooling(metadata, username);
+            if (toolingResult) {
+                return toolingResult;
+            }
+
+            // Fallback: Use sf org list metadata command (works for ALL metadata types)
+            return await this.getLastModifiedViaListMetadata(metadata, username);
+        } catch (error) {
+            console.error('Error querying last modified info:', error);
+            return null;
+        }
+    }
+
+    /**
+     * Get last modified info via Tooling API (for standard queryable types)
+     */
+    private async getLastModifiedViaTooling(metadata: MetadataInfo, username: string): Promise<LastModifiedInfo | null> {
+        try {
             let query = '';
+            let useToolingApi = false;
             
-            // Build SOQL query based on metadata type - include both Name and Id
+            // Build SOQL query based on metadata type
             switch (metadata.type) {
                 case 'ApexClass':
                     query = `SELECT LastModifiedBy.Name, LastModifiedById, LastModifiedDate FROM ApexClass WHERE Name='${metadata.apiName}'`;
@@ -203,16 +260,19 @@ export class SfdxDeployGuard {
                     query = `SELECT LastModifiedBy.Name, LastModifiedById, LastModifiedDate FROM ApexComponent WHERE Name='${metadata.apiName}'`;
                     break;
                 case 'LightningComponentBundle':
-                    // Query LWC bundle using Tooling API
-                    return await this.getLWCLastModifiedInfo(metadata.apiName, username);
+                    query = `SELECT LastModifiedBy.Name, LastModifiedById, LastModifiedDate FROM LightningComponentBundle WHERE DeveloperName='${metadata.apiName}'`;
+                    useToolingApi = true;
+                    break;
                 case 'AuraDefinitionBundle':
-                    // Query Aura bundle using Tooling API
-                    return await this.getAuraLastModifiedInfo(metadata.apiName, username);
+                    query = `SELECT LastModifiedBy.Name, LastModifiedById, LastModifiedDate FROM AuraDefinitionBundle WHERE DeveloperName='${metadata.apiName}'`;
+                    useToolingApi = true;
+                    break;
                 default:
                     return null;
             }
 
-            const command = `sf data query --query "${query}" --target-org ${username} --json`;
+            const toolingFlag = useToolingApi ? '--use-tooling-api' : '';
+            const command = `sf data query --query "${query}" --target-org ${username} ${toolingFlag} --json`;
             const { stdout } = await execAsync(command);
             const result = JSON.parse(stdout);
 
@@ -227,59 +287,46 @@ export class SfdxDeployGuard {
 
             return null;
         } catch (error) {
-            console.error('Error querying last modified info:', error);
+            console.error('Error in tooling API query:', error);
             return null;
         }
     }
 
     /**
-     * Get last modified info for LWC using Tooling API
+     * Get last modified info using sf org list metadata (works for ALL metadata types)
      */
-    private async getLWCLastModifiedInfo(bundleName: string, username: string): Promise<LastModifiedInfo | null> {
+    private async getLastModifiedViaListMetadata(metadata: MetadataInfo, username: string): Promise<LastModifiedInfo | null> {
         try {
-            const query = `SELECT LastModifiedBy.Name, LastModifiedById, LastModifiedDate FROM LightningComponentBundle WHERE DeveloperName='${bundleName}'`;
-            const command = `sf data query --query "${query}" --target-org ${username} --use-tooling-api --json`;
-            const { stdout } = await execAsync(command);
+            const command = `sf org list metadata --metadata-type ${metadata.type} --target-org ${username} --json`;
+            const { stdout } = await execAsync(command, { maxBuffer: 1024 * 1024 * 10 });
             const result = JSON.parse(stdout);
 
-            if (result.status === 0 && result.result.records && result.result.records.length > 0) {
-                const record = result.result.records[0];
-                return {
-                    name: record.LastModifiedBy?.Name || 'Unknown',
-                    id: record.LastModifiedById || '',
-                    date: new Date(record.LastModifiedDate).toLocaleString()
-                };
+            if (result.status === 0 && result.result) {
+                let metadataItems = result.result;
+                
+                // Handle single result (not an array)
+                if (!Array.isArray(metadataItems)) {
+                    metadataItems = [metadataItems];
+                }
+
+                // Find the matching metadata item
+                const matchingItem = metadataItems.find((item: any) => 
+                    item.fullName === metadata.apiName || 
+                    item.fileName?.includes(metadata.apiName)
+                );
+
+                if (matchingItem) {
+                    return {
+                        name: matchingItem.lastModifiedByName || 'Unknown',
+                        id: matchingItem.lastModifiedById || '',
+                        date: matchingItem.lastModifiedDate ? new Date(matchingItem.lastModifiedDate).toLocaleString() : 'Unknown'
+                    };
+                }
             }
 
             return null;
         } catch (error) {
-            console.error('Error querying LWC info:', error);
-            return null;
-        }
-    }
-
-    /**
-     * Get last modified info for Aura using Tooling API
-     */
-    private async getAuraLastModifiedInfo(bundleName: string, username: string): Promise<LastModifiedInfo | null> {
-        try {
-            const query = `SELECT LastModifiedBy.Name, LastModifiedById, LastModifiedDate FROM AuraDefinitionBundle WHERE DeveloperName='${bundleName}'`;
-            const command = `sf data query --query "${query}" --target-org ${username} --use-tooling-api --json`;
-            const { stdout } = await execAsync(command);
-            const result = JSON.parse(stdout);
-
-            if (result.status === 0 && result.result.records && result.result.records.length > 0) {
-                const record = result.result.records[0];
-                return {
-                    name: record.LastModifiedBy?.Name || 'Unknown',
-                    id: record.LastModifiedById || '',
-                    date: new Date(record.LastModifiedDate).toLocaleString()
-                };
-            }
-
-            return null;
-        } catch (error) {
-            console.error('Error querying Aura info:', error);
+            console.error('Error in list metadata command:', error);
             return null;
         }
     }
