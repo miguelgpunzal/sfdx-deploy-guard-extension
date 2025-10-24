@@ -20,224 +20,53 @@ This VS Code extension adds a safety check before deploying Salesforce metadata 
    - Select "Compare First" to see differences, then cancel
 4. If no conflicts detected, deployment proceeds automatically
 
-<div align="center">
+# SFDX Deploy Guard
 
-<img src="logo.png" alt="SFDX Deploy Guard Logo" width="128" height="128">
+A VS Code extension that prevents you from accidentally overwriting your teammate's changes when deploying Salesforce metadata.
 
-# 🛡️ SFDX Deploy Guard
+## Why This Extension?
 
-### Prevent Accidental Overwrites in Salesforce Development
+Ever deployed a file only to find out someone else just made important changes? This extension checks who last modified the file before you deploy and warns you if there's a potential conflict.
 
-[![Version](https://img.shields.io/badge/version-0.0.1-blue.svg)](https://github.com/miguelgpunzal/sfdx-deploy-guard-extension)
-[![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
-[![VS Code](https://img.shields.io/badge/VS%20Code-1.80.0+-007ACC.svg)](https://code.visualstudio.com/)
-[![Salesforce](https://img.shields.io/badge/Salesforce-Compatible-00A1E0.svg)](https://www.salesforce.com/)
+It also shows real-time updates in the status bar so you always know who touched the file last.
 
-**A VS Code extension that adds intelligent safety checks before deploying Salesforce metadata, protecting your team from accidental overwrites.**
+## Features
 
-[Features](#-features) • [Installation](#-installation) • [Usage](#-usage) • [Configuration](#-configuration) • [Contributing](#-contributing)
+- **Deployment Safety Check**: Warns you before deploying if someone else modified the file
+- **Real-Time Status Bar**: Shows who last modified the current file (updates while you type)
+- **Visual Alerts**: Blinking status bar when there's a conflict
+- **Side-by-Side Comparison**: View differences between local and org versions
+- **Ignore Users**: Configure trusted user IDs that won't trigger warnings
+- **Smart Polling**: Only checks for updates while you're actively editing
+- **Supports 15+ Metadata Types**: Apex, LWC, Aura, Flows, Profiles, and more
 
-</div>
+## Installation
 
----
+Install from the VS Code Marketplace: [SFDX Deploy Guard](https://marketplace.visualstudio.com/items?itemName=MiguelPunzal.sfdx-deploy-guard)
 
-## 🎯 Why SFDX Deploy Guard?
+Or search for "SFDX Deploy Guard" in the VS Code Extensions panel.
 
-Working in a team environment? Tired of accidentally overwriting a teammate's changes? **SFDX Deploy Guard** acts as your safety net by checking who last modified a file before you deploy, giving you the chance to avoid conflicts before they happen.
+### Requirements
 
-### The Problem
-- 😰 You deploy a file, only to realize a teammate just made critical changes
-- 🔄 Constant merge conflicts and overwritten work
-- ⏰ Time wasted recovering lost changes
-- 😤 Team frustration and reduced productivity
-
-### The Solution
-**SFDX Deploy Guard** queries your Salesforce org in real-time to check the last modifier before deployment, showing you a clear warning if someone else has recently changed the file.
-
----
-
-## ✨ Features
-
-<table>
-<tr>
-<td width="50%">
-
-### 🔍 Smart Detection
-- Real-time query of org metadata
-- Identifies last modifier and timestamp
-- Works with 15+ metadata types
-- Integrates seamlessly with SFDX workflow
-- User ID comparison for accurate detection
-
-</td>
-<td width="50%">
-
-### 🚨 Intelligent Warnings
-- Clear, actionable warning dialogs
-- Shows who modified and when
-- Compare changes side-by-side
-- Proceed or cancel options
-- Prevents accidental overwrites
-
-</td>
-</tr>
-<tr>
-<td width="50%">
-
-### 📊 Real-Time Monitoring
-- **NEW!** Live status bar indicator
-- Shows last modifier while editing
-- Auto-polls every 10 seconds when typing
-- Blinking alert for conflicts
-- Stops polling when inactive
-
-</td>
-<td width="50%">
-
-### ⚙️ Highly Configurable
-- Enable/disable safety checks
-- Ignore specific user IDs
-- Configure real-time monitoring
-- Customize warning behavior
-- Non-intrusive integration
-
-</td>
-</tr>
-<tr>
-<td width="50%">
-
-### 🎯 Precise Deployment
-- Deploys specific files only
-- No accidental directory deployments
-- Metadata type auto-detection
-- Terminal output visibility
-- Integration with SFDX CLI
-
-</td>
-<td width="50%">
-
-### 🎨 Developer Friendly
-- Context menu integration
-- Command palette support
-- Keyboard shortcuts compatible
-- Visual conflict indicators
-- Minimal setup required
-
-</td>
-</tr>
-</table>
-
----
-
-## 🚀 Installation
-
-### Prerequisites
-- **VS Code** 1.80.0 or higher
-- **Salesforce CLI** (sf or sfdx)
-- **Salesforce Extensions Pack** (recommended)
+- VS Code 1.80.0 or higher
+- Salesforce CLI (sf or sfdx)
 - Active Salesforce org connection
 
-### For End Users
+## Usage
 
-#### Option 1: Install from .vsix File (Recommended)
+### Basic Deployment
 
-1. **Download the latest `.vsix` file** from the [Releases page](https://github.com/miguelgpunzal/sfdx-deploy-guard-extension/releases)
+Right-click on a Salesforce file and select **"Deploy This Source to Org (with Safety Check)"**
 
-2. **Install in VS Code:**
-   - Open VS Code
-   - Press `Ctrl+Shift+P` (Windows/Linux) or `Cmd+Shift+P` (Mac)
-   - Type: **"Extensions: Install from VSIX..."**
-   - Select the downloaded `.vsix` file
-   - Reload VS Code when prompted
-
-3. **Start using it!** The extension will automatically activate when you open a Salesforce project (containing `sfdx-project.json`)
-
-#### Option 2: Install via Command Line
-
-```bash
-code --install-extension sfdx-deploy-guard-0.0.1.vsix
-```
-
-### For Developers
-
-#### Build from Source
-
-1. **Clone the repository:**
-   ```bash
-   git clone https://github.com/miguelgpunzal/sfdx-deploy-guard-extension.git
-   cd sfdx-deploy-guard-extension
-   ```
-
-2. **Install dependencies:**
-   ```bash
-   npm install
-   ```
-
-3. **Compile the extension:**
-   ```bash
-   npm run compile
-   ```
-
-4. **Package the extension:**
-   ```bash
-   npm install -g @vscode/vsce
-   vsce package
-   ```
-   This creates a `.vsix` file that can be installed
-
-5. **Install the packaged extension:**
-   - Press `Ctrl+Shift+P` and select "Extensions: Install from VSIX..."
-   - Or run: `code --install-extension sfdx-deploy-guard-0.0.1.vsix`
-
-#### Development Mode
-
-To run in development/debug mode:
-
-```bash
-# Start watch mode
-npm run watch
-
-# Open in VS Code
-code .
-
-# Press F5 to start debugging
-```
-
----
-
-## 📖 Usage
-
-### Quick Start Guide
-
-<details open>
-<summary><b>📂 From Context Menu</b></summary>
-
-1. Right-click on any Salesforce metadata file
-2. Select **"SFDX: Deploy This Source to Org (with Safety Check)"**
-3. The extension checks the org for recent changes
-4. If a conflict is detected, you'll see a warning:
-
+If someone else modified the file, you'll see a warning:
 ```
 ⚠️ Warning: This file was recently changed by Jane Smith on 10/24/2025, 2:30:00 PM.
 
-Do you want to overwrite the changes?
-
-[Yes]  [No]
+What would you like to do?
+[Deploy Anyway]  [Compare First]
 ```
 
-5. Choose **Yes** to proceed or **No** to cancel
-
-</details>
-
-<details>
-<summary><b>⌨️ From Command Palette</b></summary>
-
-1. Press `Ctrl+Shift+P` (Windows/Linux) or `Cmd+Shift+P` (Mac)
-2. Type: **"SFDX: Deploy This Source to Org (with Safety Check)"**
-3. Press Enter
-4. Follow the prompts
-
-</details>
+Choose **Deploy Anyway** to proceed or **Compare First** to see a side-by-side diff.
 
 ### 📋 Supported Metadata Types
 
