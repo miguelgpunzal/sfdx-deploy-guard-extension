@@ -104,7 +104,30 @@ Working in a team environment? Tired of accidentally overwriting a teammate's ch
 - **Salesforce Extensions Pack** (recommended)
 - Active Salesforce org connection
 
-### Quick Install
+### For End Users
+
+#### Option 1: Install from .vsix File (Recommended)
+
+1. **Download the latest `.vsix` file** from the [Releases page](https://github.com/miguelgpunzal/sfdx-deploy-guard-extension/releases)
+
+2. **Install in VS Code:**
+   - Open VS Code
+   - Press `Ctrl+Shift+P` (Windows/Linux) or `Cmd+Shift+P` (Mac)
+   - Type: **"Extensions: Install from VSIX..."**
+   - Select the downloaded `.vsix` file
+   - Reload VS Code when prompted
+
+3. **Start using it!** The extension will automatically activate when you open a Salesforce project (containing `sfdx-project.json`)
+
+#### Option 2: Install via Command Line
+
+```bash
+code --install-extension sfdx-deploy-guard-0.0.1.vsix
+```
+
+### For Developers
+
+#### Build from Source
 
 1. **Clone the repository:**
    ```bash
@@ -122,7 +145,30 @@ Working in a team environment? Tired of accidentally overwriting a teammate's ch
    npm run compile
    ```
 
-4. **Open in VS Code and press F5** to run in debug mode
+4. **Package the extension:**
+   ```bash
+   npm install -g @vscode/vsce
+   vsce package
+   ```
+   This creates a `.vsix` file that can be installed
+
+5. **Install the packaged extension:**
+   - Press `Ctrl+Shift+P` and select "Extensions: Install from VSIX..."
+   - Or run: `code --install-extension sfdx-deploy-guard-0.0.1.vsix`
+
+#### Development Mode
+
+To run in development/debug mode:
+
+```bash
+# Start watch mode
+npm run watch
+
+# Open in VS Code
+code .
+
+# Press F5 to start debugging
+```
 
 ---
 
