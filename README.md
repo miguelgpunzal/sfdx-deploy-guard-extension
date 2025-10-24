@@ -17,6 +17,8 @@ This VS Code extension adds a safety check before deploying Salesforce metadata 
 3. If the last modifier is different from the current user:
    - A warning dialog appears: "<div align="center">
 
+<img src="logo.svg" alt="SFDX Deploy Guard Logo" width="128" height="128">
+
 # 🛡️ SFDX Deploy Guard
 
 ### Prevent Accidental Overwrites in Salesforce Development

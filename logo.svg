@@ -1,0 +1,20 @@
+<svg width="128" height="128" viewBox="0 0 128 128" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <defs>
+        <linearGradient id="cloudGradient" x1="64" y1="20" x2="64" y2="108" gradientUnits="userSpaceOnUse">
+            <stop stop-color="#00A1E0"/>
+            <stop offset="1" stop-color="#0070D2"/>
+        </linearGradient>
+        <filter id="shadow" x="0" y="0" width="128" height="128" filterUnits="userSpaceOnUse">
+            <feDropShadow dx="0" dy="2" stdDeviation="3" flood-color="#000000" flood-opacity="0.2"/>
+        </filter>
+    </defs>
+
+    <!-- Simplified and more accurate Salesforce Cloud Shape -->
+    <path d="M95.5 45.5C92.5 32.5 81 22.5 67.5 22.5C57.5 22.5 48.5 28.5 43.5 37.5C42.5 37.5 41 37 40 37C28.5 37 19 46.5 19 58C19 60.5 19.5 63 20 65.5C10.5 70.5 5 80 5 90C5 104.5 18 116 33.5 116H94C110.5 116 123 103.5 123 88C123 72.5 110.5 60 95.5 60C95.5 59 95.5 46.5 95.5 45.5Z" fill="url(#cloudGradient)" filter="url(#shadow)" transform="translate(0, -5)"/>
+
+    <!-- Shield Icon -->
+    <path d="M64 55L90 68V89C90 104.464 78.464 116 64 116C49.536 116 38 104.464 38 89V68L64 55Z" fill="white" fill-opacity="0.95"/>
+    
+    <!-- Centered Checkmark -->
+    <path d="M52 88L62 98L78 78" stroke="#005A9E" stroke-width="8" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>
