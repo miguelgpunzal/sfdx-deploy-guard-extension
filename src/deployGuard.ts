@@ -82,7 +82,8 @@ export class SfdxDeployGuard {
                     const currentUserId = await this.getCurrentUserId(username);
                     
                     // Check if last modifier is different from current user (compare by ID)
-                    if (lastModifiedInfo.id !== currentUserId) {
+                    if (lastModifiedInfo.id && currentUserId && lastModifiedInfo.id !== currentUserId) {
+                        // Different user modified the file - show warning
                         const choice = await vscode.window.showWarningMessage(
                             `⚠️ Warning: This file was recently changed by ${lastModifiedInfo.name} on ${lastModifiedInfo.date}.\n\nWhat would you like to do?`,
                             { modal: true },
@@ -102,6 +103,9 @@ export class SfdxDeployGuard {
                             // Proceed with deployment
                             // Continue to deployment
                         }
+                    } else {
+                        // Same user (you) made the last change - proceed silently
+                        vscode.window.showInformationMessage(`✅ You were the last to modify this file. Proceeding with deployment...`);
                     }
 
                     // Proceed with deployment
