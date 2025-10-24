@@ -3,8 +3,8 @@
   "displayName": "SFDX Deploy Guard",
   "description": "Prevent accidental overwrites with smart deployment safety checks for Salesforce metadata",
   "version": "0.0.1",
-  "publisher": "miguelgpunzal",
-  "icon": "logo.svg",
+  "publisher": "MiguelPunzal",
+  "icon": "logo.png",
   "author": {
     "name": "Miguel Punzal",
     "url": "https://github.com/miguelgpunzal"
