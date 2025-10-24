@@ -23,6 +23,9 @@
   "categories": [
     "Other"
   ],
+  "extensionDependencies": [
+    "salesforce.salesforcedx-vscode-core"
+  ],
   "activationEvents": [
     "workspaceContains:sfdx-project.json"
   ],
@@ -31,7 +34,7 @@
     "commands": [
       {
         "command": "sfdxDeployGuard.deployWithCheck",
-        "title": "Deploy This Source to Org (with Safety Check)",
+        "title": "SFDX: Deploy This Source to Org (with Safety Check)",
         "category": "SFDX"
       }
     ],
@@ -40,14 +43,14 @@
         {
           "command": "sfdxDeployGuard.deployWithCheck",
           "when": "resourceExtname =~ /\\.(cls|trigger|page|component|js|html|css|xml)$/",
-          "group": "2_workspace@1"
+          "group": "sfdx"
         }
       ],
       "editor/context": [
         {
           "command": "sfdxDeployGuard.deployWithCheck",
           "when": "resourceExtname =~ /\\.(cls|trigger|page|component|js|html|css|xml)$/",
-          "group": "2_workspace@1"
+          "group": "sfdx"
         }
       ],
       "commandPalette": [
