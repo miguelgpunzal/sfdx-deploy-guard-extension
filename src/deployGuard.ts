@@ -360,13 +360,27 @@ export class SfdxDeployGuard {
      */
     private async getCurrentUserId(username: string): Promise<string> {
         try {
-            // Get the current user's ID directly from org info
+            // First get the org info to find the username
             const orgCommand = `sf org display --target-org ${username} --json`;
             const { stdout: orgStdout } = await execAsync(orgCommand);
             const orgResult = JSON.parse(orgStdout);
             
-            if (orgResult.status === 0 && orgResult.result && orgResult.result.id) {
-                return orgResult.result.id;
+            if (orgResult.status !== 0 || !orgResult.result) {
+                return '';
+            }
+
+            // Get the actual username from org display
+            const actualUsername = orgResult.result.username;
+
+            // Query the User table to get the user ID by username
+            const query = `SELECT Id FROM User WHERE Username='${actualUsername}'`;
+            const queryCommand = `sf data query --query "${query}" --target-org ${username} --json`;
+            
+            const { stdout } = await execAsync(queryCommand);
+            const result = JSON.parse(stdout);
+            
+            if (result.status === 0 && result.result?.records && result.result.records.length > 0) {
+                return result.result.records[0].Id;
             }
 
             return '';
