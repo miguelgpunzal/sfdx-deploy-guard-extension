@@ -124,8 +124,6 @@ Working in a team environment? Tired of accidentally overwriting a teammate's ch
 
 4. **Open in VS Code and press F5** to run in debug mode
 
-> 💡 **Tip:** See [SETUP.md](./SETUP.md) for detailed development instructions.
-
 ---
 
 ## 📖 Usage
@@ -281,9 +279,7 @@ sfdx-deploy-guard-extension/
 │   └── deployGuard.ts     # Core safety check logic
 ├── package.json           # Extension manifest
 ├── tsconfig.json          # TypeScript configuration
-├── README.md              # This file
-├── SETUP.md              # Development setup guide
-└── QUICKSTART.md         # Quick start guide
+└── README.md              # This file
 ```
 
 ### Building
